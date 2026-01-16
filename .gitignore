@@ -1,0 +1,21 @@
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfvars
+
+# Terraform lock files (optional to keep)
+**/.terraform.lock.hcl
+
+# Kubernetes
+*.kubeconfig
+
+# Docker
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/

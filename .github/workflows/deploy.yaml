@@ -1,0 +1,45 @@
+name: Deploy Parlay Analyzer
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "app/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::144520190518:role/github-actions-parlay-deploy
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          docker build -t parlay-analyzer:$IMAGE_TAG ./app
+          docker tag parlay-analyzer:$IMAGE_TAG 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:$IMAGE_TAG
+          docker push 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name parlay-dev
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade parlay-analyzer ./charts/parlay-analyzer \
+            --set image.tag=$IMAGE_TAG

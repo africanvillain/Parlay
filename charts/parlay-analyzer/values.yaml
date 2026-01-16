@@ -1,0 +1,19 @@
+image:
+  repository: 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer
+  tag: dev
+  pullPolicy: Always
+
+service:
+  port: 8000
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
