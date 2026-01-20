@@ -68,5 +68,7 @@ jobs:
       # ---- DEPLOY ----
       - name: Deploy with Helm
         run: |
+          export KUBECONFIG=$HOME/.kube/config
           helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
             --set image.tag=$IMAGE_TAG
+
