@@ -53,9 +53,12 @@ jobs:
           docker push 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:$IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      # ✅ NO role-arn here
-      - name: Update kubeconfig
+      # 🔥 CRITICAL FIX: nuke poisoned kubeconfig and regenerate cleanly
+      - name: Reset and update kubeconfig
         run: |
+          rm -rf /home/runner/.kube
+          mkdir -p /home/runner/.kube
+
           aws eks update-kubeconfig \
             --region $AWS_REGION \
             --name $CLUSTER_NAME
