@@ -19,7 +19,6 @@ jobs:
     env:
       AWS_REGION: us-east-1
       CLUSTER_NAME: parlay-dev
-      ROLE_ARN: arn:aws:iam::144520190518:role/github-actions-parlay-deploy
       KUBECONFIG: /home/runner/.kube/config
       KUBE_CONTEXT: arn:aws:eks:us-east-1:144520190518:cluster/parlay-dev
 
@@ -38,12 +37,10 @@ jobs:
           curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/kubectl
-          kubectl version --client=true
 
       - name: Install Helm
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          helm version
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -51,33 +48,23 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE_TAG=${GITHUB_SHA::7}
-          echo "Using IMAGE_TAG=$IMAGE_TAG (commit $GITHUB_SHA)"
           docker build -t parlay-analyzer:$IMAGE_TAG ./app
           docker tag parlay-analyzer:$IMAGE_TAG 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:$IMAGE_TAG
           docker push 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:$IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
+      # ✅ NO role-arn here
       - name: Update kubeconfig
         run: |
-          mkdir -p $(dirname "$KUBECONFIG")
           aws eks update-kubeconfig \
             --region $AWS_REGION \
-            --name $CLUSTER_NAME \
-            --role-arn $ROLE_ARN
-          echo "KUBECONFIG=$KUBECONFIG"
-          ls -la $(dirname "$KUBECONFIG")
-          test -f "$KUBECONFIG" && echo "kubeconfig exists" || (echo "kubeconfig missing" && exit 1)
+            --name $CLUSTER_NAME
 
-      # ---- HARD PROOF DEBUG ----
-      - name: Debug auth + context
+      - name: Verify cluster access
         run: |
-          echo "GITHUB_SHA=$GITHUB_SHA"
-          aws sts get-caller-identity
-          kubectl config get-contexts
           kubectl config use-context "$KUBE_CONTEXT"
-          kubectl config current-context
           kubectl get nodes
-          kubectl auth can-i get pods -A
+          kubectl auth can-i get pods
 
       - name: Deploy with Helm
         run: |
