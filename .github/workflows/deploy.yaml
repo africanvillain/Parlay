@@ -14,6 +14,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # 🔑 CRITICAL: make kubeconfig available to ALL steps
+    env:
+      KUBECONFIG: /home/runner/.kube/config
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,21 +58,16 @@ jobs:
             --name parlay-dev \
             --role-arn arn:aws:iam::144520190518:role/github-actions-parlay-deploy
 
-      # ---- VERIFY AUTH ----
+      # ---- VERIFY AUTH (FAILS FAST IF BROKEN) ----
       - name: Verify cluster access
         run: |
-          aws eks get-token \
-            --cluster-name parlay-dev \
-            --region us-east-1 \
-            --role-arn arn:aws:iam::144520190518:role/github-actions-parlay-deploy \
-            --output json
-
           kubectl get nodes
+          kubectl auth can-i get pods
 
       # ---- DEPLOY ----
       - name: Deploy with Helm
         run: |
-          export KUBECONFIG=$HOME/.kube/config
           helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --namespace default \
+            --create-namespace \
             --set image.tag=$IMAGE_TAG
-
