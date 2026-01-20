@@ -24,6 +24,18 @@ jobs:
           role-to-assume: arn:aws:iam::144520190518:role/github-actions-parlay-deploy
           aws-region: us-east-1
 
+      # ---- INSTALL KUBECTL (REQUIRED) ----
+      - name: Install kubectl
+        run: |
+          curl -LO https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      # ---- INSTALL HELM (REQUIRED) ----
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
@@ -42,7 +54,13 @@ jobs:
             --name parlay-dev \
             --role-arn arn:aws:iam::144520190518:role/github-actions-parlay-deploy
 
+      # ---- VERIFY AUTH (THIS IS THE KEY) ----
+      - name: Verify cluster access
+        run: |
+          kubectl get nodes
+          kubectl auth can-i get pods
+
       - name: Deploy with Helm
         run: |
-          helm upgrade parlay-analyzer ./charts/parlay-analyzer \
+          helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
             --set image.tag=$IMAGE_TAG
