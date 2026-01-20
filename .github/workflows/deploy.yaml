@@ -37,7 +37,10 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --region us-east-1 --name parlay-dev
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name parlay-dev \
+            --role-arn arn:aws:iam::144520190518:role/github-actions-parlay-deploy
 
       - name: Deploy with Helm
         run: |
