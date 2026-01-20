@@ -14,9 +14,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # 🔑 CRITICAL: make kubeconfig available to ALL steps
     env:
+      AWS_REGION: us-east-1
+      CLUSTER_NAME: parlay-dev
       KUBECONFIG: /home/runner/.kube/config
+      KUBE_CONTEXT: arn:aws:eks:us-east-1:144520190518:cluster/parlay-dev
 
     steps:
       - name: Checkout code
@@ -54,20 +56,24 @@ jobs:
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig \
-            --region us-east-1 \
-            --name parlay-dev \
+            --region $AWS_REGION \
+            --name $CLUSTER_NAME \
             --role-arn arn:aws:iam::144520190518:role/github-actions-parlay-deploy
 
-      # ---- VERIFY AUTH (FAILS FAST IF BROKEN) ----
+      # ---- VERIFY KUBE AUTH (AUTHORITATIVE CHECK) ----
       - name: Verify cluster access
         run: |
+          kubectl config get-contexts
+          kubectl config use-context $KUBE_CONTEXT
           kubectl get nodes
           kubectl auth can-i get pods
 
-      # ---- DEPLOY ----
+      # ---- DEPLOY (FORCE HELM CONTEXT + CONFIG) ----
       - name: Deploy with Helm
         run: |
           helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --kubeconfig $KUBECONFIG \
+            --kube-context $KUBE_CONTEXT \
             --namespace default \
             --create-namespace \
             --set image.tag=$IMAGE_TAG
