@@ -1,10 +1,14 @@
+replicaCount: 2
+
 image:
   repository: 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer
   tag: dev
   pullPolicy: Always
 
 service:
-  port: 8000
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
 
 ingress:
   enabled: true
@@ -13,7 +17,15 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-  hosts:
-    - paths:
-        - path: /
-          pathType: Prefix
+  path: /
+  pathType: Prefix
+
+probes:
+  readiness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  liveness:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 20

@@ -3,9 +3,9 @@ kind: Service
 metadata:
   name: parlay-analyzer
 spec:
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   selector:
     app: parlay-analyzer
   ports:
-    - port: 80
-      targetPort: {{ .Values.service.port }}
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
