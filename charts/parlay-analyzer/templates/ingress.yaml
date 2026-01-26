@@ -7,6 +7,13 @@ metadata:
 {{- range $k, $v := .Values.ingress.annotations }}
     {{ $k }}: {{ $v | quote }}
 {{- end }}
+{{- if and .Values.canary (default false .Values.canary.enabled) }}
+    alb.ingress.kubernetes.io/actions.parlay-analyzer: >
+      {"type":"forward","forwardConfig":{"targetGroups":[
+        {"serviceName":"parlay-analyzer-stable","servicePort":{{ .Values.service.port }},"weight":{{ sub 100 .Values.canary.weight }}},
+        {"serviceName":"parlay-analyzer-canary","servicePort":{{ .Values.service.port }},"weight":{{ .Values.canary.weight }}
+      ]}}
+{{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -16,7 +23,13 @@ spec:
             pathType: {{ .Values.ingress.pathType }}
             backend:
               service:
+{{- if and .Values.canary (default false .Values.canary.enabled) }}
                 name: parlay-analyzer
                 port:
+                  name: use-annotation
+{{- else }}
+                name: parlay-analyzer-stable
+                port:
                   number: {{ .Values.service.port }}
+{{- end }}
 {{- end }}
