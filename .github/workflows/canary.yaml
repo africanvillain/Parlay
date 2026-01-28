@@ -16,13 +16,20 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Configure AWS creds (OIDC)
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::144520190518:role/platform-infra-github-oidc-role
           aws-region: us-east-1
+
+      - name: Configure kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name parlay-dev
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -39,7 +46,8 @@ jobs:
       - name: Smoke test
         run: |
           ALB=$(kubectl get ingress parlay-analyzer -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-          for i in {1..20}; do
+          echo "ALB=$ALB"
+          for i in {1..30}; do
             curl -s "http://$ALB/version" || true
             sleep 0.3
           done
