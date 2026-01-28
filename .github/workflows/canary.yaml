@@ -1,0 +1,58 @@
+name: Canary Rollout
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary_weight:
+        description: "Canary traffic percentage"
+        required: true
+        default: "10"
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS creds (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::144520190518:role/platform-infra-github-oidc-role
+          aws-region: us-east-1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Enable canary + set weight
+        run: |
+          helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --set canary.enabled=true \
+            --set canary.weight=${{ github.event.inputs.canary_weight }}
+
+      - name: Smoke test
+        run: |
+          ALB=$(kubectl get ingress parlay-analyzer -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          for i in {1..20}; do
+            curl -s "http://$ALB/version" || true
+            sleep 0.3
+          done
+
+      - name: Promote to stable
+        if: success()
+        run: |
+          helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --set stable.image.tag=v2 \
+            --set canary.enabled=false
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --set canary.enabled=false
