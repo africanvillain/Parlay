@@ -1,6 +1,3 @@
-This version is what hiring managers and senior engineers actually read.
-No storytelling, no diary tone, just signal.
-
 Parlay Analyzer — Production Deployment Architecture
 
 This repository demonstrates a production-grade deployment system built on AWS EKS using Helm, ALB Ingress, and GitHub Actions.
