@@ -1,5 +1,3 @@
-1️⃣ SHORT, INDUSTRY-STANDARD README (PASTE THIS)
-
 This version is what hiring managers and senior engineers actually read.
 No storytelling, no diary tone, just signal.
 
