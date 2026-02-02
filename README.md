@@ -1,5 +1,3 @@
-This version is what hiring managers and senior engineers actually read.
-No storytelling, no diary tone, just signal.
 
 Parlay Analyzer — Production Deployment Architecture
 
