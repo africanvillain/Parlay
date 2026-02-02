@@ -2,11 +2,13 @@ name: Deploy Parlay Analyzer
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
     paths:
       - "app/**"
       - "charts/**"
-      - ".github/workflows/**"
+      - ".github/**"
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -14,7 +16,8 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    name: Deploy
+    runs-on: ubuntu-22.04
 
     env:
       AWS_REGION: us-east-1
@@ -31,6 +34,9 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::144520190518:role/github-actions-parlay-deploy
           aws-region: us-east-1
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
       - name: Install kubectl
         run: |
@@ -79,7 +85,6 @@ jobs:
             | yq '.metadata.annotations."alb.ingress.kubernetes.io/actions.parlay-analyzer-forward"' \
             | jq .
 
-      # 🔥 Reset kubeconfig and reconnect
       - name: Reset and update kubeconfig
         run: |
           rm -rf /home/runner/.kube
@@ -101,5 +106,4 @@ jobs:
             --kubeconfig "$KUBECONFIG" \
             --kube-context "$KUBE_CONTEXT" \
             --namespace default \
-            --create-namespace \
-            --set image.tag=$IMAGE_TAG
+            --create
