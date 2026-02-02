@@ -1,3 +1,5 @@
+# retrigger pipeline
+
 name: Deploy Parlay Analyzer
 
 on:
@@ -17,7 +19,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
 
     env:
       AWS_REGION: us-east-1
