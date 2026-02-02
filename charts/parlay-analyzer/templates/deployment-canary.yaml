@@ -1,26 +1,33 @@
-{{- if and .Values.canary (default false .Values.canary.enabled) }}
+{{- $canary := (default dict .Values.canary) -}}
+{{- if (default false $canary.enabled) }}
+{{- $activeEnv := default "blue" .Values.activeEnv }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: parlay-analyzer-canary
+  name: parlay-analyzer-canary-{{ $activeEnv }}
   labels:
     app: parlay-analyzer
     track: canary
+    env: {{ $activeEnv }}
+    version: v2
 spec:
-  replicas: {{ .Values.canary.replicaCount }}
+  replicas: {{ default 1 $canary.replicaCount }}
   selector:
     matchLabels:
       app: parlay-analyzer
       track: canary
+      env: {{ $activeEnv }}
   template:
     metadata:
       labels:
         app: parlay-analyzer
         track: canary
+        env: {{ $activeEnv }}
+        version: v2
     spec:
       containers:
         - name: app
-          image: "{{ .Values.image.repository }}:{{ .Values.canary.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ $canary.image.tag }}"
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -31,4 +38,18 @@ spec:
               value: "canary"
             - name: APP_VERSION
               value: "v2"
+            - name: APP_ENV
+              value: "{{ $activeEnv }}"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
 {{- end }}

@@ -1,31 +1,29 @@
-replicaCount: 2
-
 image:
   repository: 144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer
-  tag: dev
-  pullPolicy: Always
+  tag: ""
+
+# Deployment intent:
+# - stable   → 100% traffic to stable service
+# - canary   → weighted traffic between stable and canary
+# - cutover  → atomic blue/green environment switch (no canary)
+deploymentMode: stable   # stable | canary | cutover
+
+# Active environment receiving traffic
+activeEnv: green   # blue | green
+
+env:
+  activeStableReplicas: 2
+  inactiveStableReplicas: 1
+
+stable:
+  image:
+    tag: v1   # last known good version
+
+canary:
+  weight: 10          # used only when deploymentMode=canary
+  replicaCount: 1
+  image:
+    tag: v2            # candidate version
 
 service:
-  type: ClusterIP
   port: 80
-  targetPort: 8000
-
-ingress:
-  enabled: true
-  className: alb
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-  path: /
-  pathType: Prefix
-
-probes:
-  readiness:
-    path: /health
-    initialDelaySeconds: 5
-    periodSeconds: 10
-  liveness:
-    path: /health
-    initialDelaySeconds: 10
-    periodSeconds: 20

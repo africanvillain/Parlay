@@ -1,35 +1,47 @@
-{{- if .Values.ingress.enabled }}
+{{- /*
+Ingress traffic behavior is controlled by:
+- .Values.deploymentMode : stable | canary | cutover
+- .Values.activeEnv      : blue | green
+*/ -}}
+
+{{- $mode := default "stable" .Values.deploymentMode }}
+{{- $env := default "blue" .Values.activeEnv }}
+{{- $stableSvc := printf "parlay-analyzer-stable-%s" $env }}
+{{- $canarySvc := printf "parlay-analyzer-canary-%s" $env }}
+{{- $weight := default 10 .Values.canary.weight }}
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: parlay-analyzer
+  namespace: default
   annotations:
-{{- range $k, $v := .Values.ingress.annotations }}
-    {{ $k }}: {{ $v | quote }}
-{{- end }}
-{{- if and .Values.canary (default false .Values.canary.enabled) }}
-    alb.ingress.kubernetes.io/actions.parlay-analyzer: >
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: "/health"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/actions.parlay-analyzer-forward: >
       {"type":"forward","forwardConfig":{"targetGroups":[
-        {"serviceName":"parlay-analyzer-stable","servicePort":{{ .Values.service.port }},"weight":{{ sub 100 .Values.canary.weight }}},
-        {"serviceName":"parlay-analyzer-canary","servicePort":{{ .Values.service.port }},"weight":{{ .Values.canary.weight }}
-      ]}}
+{{- if eq $mode "canary" }}
+        {"serviceName":"{{ $stableSvc }}","servicePort":80,"weight":{{ sub 100 ($weight | int) }}},
+        {"serviceName":"{{ $canarySvc }}","servicePort":80,"weight":{{ $weight | int }}
+{{- else if eq $mode "cutover" }}
+        {"serviceName":"{{ $stableSvc }}","servicePort":80,"weight":100}
+{{- else }}
+        {"serviceName":"{{ $stableSvc }}","servicePort":80,"weight":100}
 {{- end }}
+      ]}}
+  labels:
+    app.kubernetes.io/managed-by: Helm
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
+  ingressClassName: alb
   rules:
     - http:
         paths:
-          - path: {{ .Values.ingress.path }}
-            pathType: {{ .Values.ingress.pathType }}
+          - path: /
+            pathType: Prefix
             backend:
               service:
-{{- if and .Values.canary (default false .Values.canary.enabled) }}
-                name: parlay-analyzer
+                name: parlay-analyzer-forward
                 port:
                   name: use-annotation
-{{- else }}
-                name: parlay-analyzer-stable
-                port:
-                  number: {{ .Values.service.port }}
-{{- end }}
-{{- end }}

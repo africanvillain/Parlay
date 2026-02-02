@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-stable-blue
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: stable
+    env: blue
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-stable-green
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: stable
+    env: green
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000

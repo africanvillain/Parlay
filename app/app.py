@@ -1,4 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 import json
 import os
 
@@ -12,10 +13,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
 
-        # ✅ allow optional custom headers (for canary visibility)
         if headers:
-            for key, value in headers.items():
-                self.send_header(key, value)
+            for k, v in headers.items():
+                self.send_header(k, v)
 
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode())
@@ -42,7 +42,11 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json({"error": "not found"}, status=404)
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 if __name__ == "__main__":
     port = 8000
     print(f"Starting {APP_NAME} on port {port} ({APP_TRACK}, {APP_VERSION})")
-    HTTPServer(("", port), Handler).serve_forever()
+    ThreadedHTTPServer(("", port), Handler).serve_forever()

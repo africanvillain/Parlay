@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-canary-blue
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: canary
+    env: blue
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-canary-green
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: canary
+    env: green
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000

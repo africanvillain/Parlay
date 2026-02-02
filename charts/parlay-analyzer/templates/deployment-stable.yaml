@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parlay-analyzer-stable-blue
+  labels:
+    app: parlay-analyzer
+    track: stable
+    env: blue
+    version: v1
+spec:
+  replicas: {{ if eq (default "blue" .Values.activeEnv) "blue" }}{{ default 2 .Values.env.activeStableReplicas }}{{ else }}{{ default 1 .Values.env.inactiveStableReplicas }}{{ end }}
+  selector:
+    matchLabels:
+      app: parlay-analyzer
+      track: stable
+      env: blue
+  template:
+    metadata:
+      labels:
+        app: parlay-analyzer
+        track: stable
+        env: blue
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ default .Values.stable.image.tag .Values.image.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_NAME
+              value: "parlay-analyzer"
+            - name: APP_TRACK
+              value: "stable"
+            - name: APP_VERSION
+              value: "v1"
+            - name: APP_ENV
+              value: "blue"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parlay-analyzer-stable-green
+  labels:
+    app: parlay-analyzer
+    track: stable
+    env: green
+    version: v1
+spec:
+  replicas: {{ if eq (default "blue" .Values.activeEnv) "green" }}{{ default 2 .Values.env.activeStableReplicas }}{{ else }}{{ default 1 .Values.env.inactiveStableReplicas }}{{ end }}
+  selector:
+    matchLabels:
+      app: parlay-analyzer
+      track: stable
+      env: green
+  template:
+    metadata:
+      labels:
+        app: parlay-analyzer
+        track: stable
+        env: green
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ default .Values.stable.image.tag .Values.image.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_NAME
+              value: "parlay-analyzer"
+            - name: APP_TRACK
+              value: "stable"
+            - name: APP_VERSION
+              value: "v1"
+            - name: APP_ENV
+              value: "green"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20

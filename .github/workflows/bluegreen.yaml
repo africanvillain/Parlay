@@ -1,0 +1,65 @@
+name: Blue/Green Flip
+
+on:
+  workflow_dispatch:
+    inputs:
+      active_env:
+        description: "Target active environment (blue|green)"
+        required: true
+        default: "green"
+      scale_inactive_to_zero:
+        description: "Scale inactive env stable replicas to 0 (cost control)"
+        required: true
+        default: "false"
+
+jobs:
+  flip:
+    runs-on: ubuntu-latest
+
+    # Configure this GitHub Environment with required reviewers
+    # for manual approval before traffic flip.
+    environment: bluegreen-approval
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::144520190518:role/github-actions-parlay-deploy
+          aws-region: us-east-1
+
+      - name: Configure kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name parlay-dev
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Flip active environment (atomic traffic switch)
+        run: |
+          if [[ "${{ github.event.inputs.scale_inactive_to_zero }}" == "true" ]]; then
+            INACTIVE=0
+          else
+            INACTIVE=1
+          fi
+
+          helm upgrade --install parlay-analyzer ./charts/parlay-analyzer \
+            --set activeEnv=${{ github.event.inputs.active_env }} \
+            --set env.inactiveStableReplicas=$INACTIVE
+
+      - name: Smoke test
+        run: |
+          ALB=$(kubectl get ingress parlay-analyzer -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "ALB=$ALB"
+          curl -fsS "http://$ALB/health"

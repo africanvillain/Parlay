@@ -1,0 +1,209 @@
+---
+# Source: parlay-analyzer/templates/service-canary.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-canary-blue
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: canary
+    env: blue
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+# Source: parlay-analyzer/templates/service-canary.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-canary-green
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: canary
+    env: green
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+# Source: parlay-analyzer/templates/service-forward.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-forward
+spec:
+  type: ClusterIP
+  ports:
+    - name: use-annotation
+      port: 80
+      targetPort: 8000
+---
+# Source: parlay-analyzer/templates/service-stable.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-stable-blue
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: stable
+    env: blue
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+# Source: parlay-analyzer/templates/service-stable.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parlay-analyzer-stable-green
+spec:
+  type: ClusterIP
+  selector:
+    app: parlay-analyzer
+    track: stable
+    env: green
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+# Source: parlay-analyzer/templates/deployment-stable.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parlay-analyzer-stable-blue
+  labels:
+    app: parlay-analyzer
+    track: stable
+    env: blue
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: parlay-analyzer
+      track: stable
+      env: blue
+  template:
+    metadata:
+      labels:
+        app: parlay-analyzer
+        track: stable
+        env: blue
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: "144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:v1"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_NAME
+              value: "parlay-analyzer"
+            - name: APP_TRACK
+              value: "stable"
+            - name: APP_VERSION
+              value: "v1"
+            - name: APP_ENV
+              value: "blue"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+# Source: parlay-analyzer/templates/deployment-stable.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parlay-analyzer-stable-green
+  labels:
+    app: parlay-analyzer
+    track: stable
+    env: green
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parlay-analyzer
+      track: stable
+      env: green
+  template:
+    metadata:
+      labels:
+        app: parlay-analyzer
+        track: stable
+        env: green
+        version: v1
+    spec:
+      containers:
+        - name: app
+          image: "144520190518.dkr.ecr.us-east-1.amazonaws.com/parlay-analyzer:v1"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_NAME
+              value: "parlay-analyzer"
+            - name: APP_TRACK
+              value: "stable"
+            - name: APP_VERSION
+              value: "v1"
+            - name: APP_ENV
+              value: "green"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+# Source: parlay-analyzer/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: parlay-analyzer
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: "/health"
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/actions.parlay-analyzer-forward: >
+      {"type":"forward","forwardConfig":{"targetGroups":[
+        {"serviceName":"parlay-analyzer-stable-blue","servicePort":80,"weight":100}
+      ]}}
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: parlay-analyzer-forward
+                port:
+                  name: use-annotation
