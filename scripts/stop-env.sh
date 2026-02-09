@@ -19,13 +19,13 @@ else
 fi
 
 # -----------------------------
-# Scale Kubernetes workloads
+# Scale Kubernetes deployments
 # -----------------------------
 echo "Scaling Kubernetes deployments to zero..."
 kubectl scale deployment --all --replicas=0 -n default 2>/dev/null || echo "No k8s deployments found."
 
 # -----------------------------
-# Delete ALBs
+# Delete Application Load Balancers
 # -----------------------------
 echo "Deleting Application Load Balancers..."
 ALB_ARNS=$(aws elbv2 describe-load-balancers \
@@ -49,4 +49,11 @@ NAT_IDS=$(aws ec2 describe-nat-gateways \
   --output text)
 
 if [ -n "$NAT_IDS" ]; then
-  for na
+  for nat in $NAT_IDS; do
+    aws ec2 delete-nat-gateway --nat-gateway-id "$nat"
+  done
+else
+  echo "No NAT Gateways found."
+fi
+
+echo "=== SAFE PAUSE COMPLETE ✅ ==="
