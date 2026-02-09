@@ -54,7 +54,8 @@ jobs:
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq
-          sudo apt-get update && sudo apt-get install -y jq
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -80,11 +81,14 @@ jobs:
             fi
           fi
 
-      # 🔎 Guardrail: validate rendered ALB JSON
+      # 🔎 Guardrail: validate rendered ALB annotation JSON (FIXED)
       - name: Guardrail - validate ALB annotation JSON
         run: |
           helm template parlay-analyzer ./charts/parlay-analyzer \
-            | yq '.metadata.annotations."alb.ingress.kubernetes.io/actions.parlay-analyzer-forward"' \
+            | yq -o=json '
+                select(.kind == "Ingress")
+                | .metadata.annotations."alb.ingress.kubernetes.io/actions.parlay-analyzer-forward"
+              ' \
             | jq .
 
       - name: Reset and update kubeconfig
@@ -108,4 +112,4 @@ jobs:
             --kubeconfig "$KUBECONFIG" \
             --kube-context "$KUBE_CONTEXT" \
             --namespace default \
-            --create
+            --create-namespace
